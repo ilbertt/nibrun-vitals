@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>vitals — the microVM serving this page</title>
+    <meta
+      name="description"
+      content="A nibrun microVM with a face: live CPU, memory, disk, visitors, naps and achievements. Boop it."
+    >
+    <meta name="theme-color" content="#101410">
+    <link rel="icon" href="./favicon.svg">
+    <link rel="stylesheet" href="./page.css">
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <div class="brand">
+          <span class="logo"
+            ><svg
+              viewBox="0 0 16 14"
+              shape-rendering="crispEdges"
+              aria-hidden="true"
+            >
+              <rect
+                x="3"
+                y="1"
+                width="10"
+                height="11"
+                fill="#0a0a0a"
+                opacity=".85"
+              />
+              <rect x="5" y="4" width="2" height="2" fill="#83fd9e" />
+              <rect x="10" y="4" width="2" height="2" fill="#83fd9e" />
+              <rect x="6" y="8" width="1" height="1" fill="#83fd9e" />
+              <rect x="9" y="8" width="1" height="1" fill="#83fd9e" />
+              <rect x="7" y="9" width="2" height="1" fill="#83fd9e" />
+            </svg></span
+          >vitals<span class="host">%HOST%</span>
+        </div>
+        <div class="right">
+          <span class="chip" id="status-chip"
+            ><span class="dot"></span><span id="status-text">online</span></span
+          >
+          <button type="button" class="btn alt" id="boop">
+            boop<span class="k" id="boops">–</span>
+          </button>
+          <a class="btn" href="https://app.nibrun.com/deploy"
+            >Deploy on nibrun</a
+          >
+        </div>
+      </nav>
+
+      <header class="hero">
+        <div class="pet">
+          <div
+            id="face"
+            class="face"
+            role="img"
+            aria-label="the microVM, drawn as a face that follows your cursor"
+          ></div>
+        </div>
+        <div>
+          <p class="eyebrow">
+            <span>%HOST%</span><span>lvl <b id="lvl-eyebrow">–</b></span
+            ><span>born <b id="born">–</b></span
+            ><span id="mood">mood <b>–</b></span>
+          </p>
+          <h1>This is the microVM serving this page.</h1>
+          <p class="lede">
+            <span id="hero-ram">%RAM%</span>
+            of RAM, %CORES%, a %DISK% disk, one %BIN% Bun binary. It naps when
+            you leave.
+          </p>
+          <div class="sheet">
+            <span class="k">LVL</span
+            ><span class="v"
+              ><b id="lvl">–</b>
+              <span class="h">· xp <span id="xp">–</span></span></span
+            >
+            <div class="segs hi" id="seg-xp"></div>
+            <span class="h" id="xp-next">next at –</span>
+            <span class="k">HP</span><span class="v" id="hp">–</span>
+            <div class="segs" id="seg-hp"></div>
+            <span class="h">memory free</span>
+            <span class="k">EN</span><span class="v" id="en">–</span>
+            <div class="segs" id="seg-en"></div>
+            <span class="h">cpu idle</span>
+            <span class="k">DSK</span><span class="v" id="dsk">–</span>
+            <div class="segs" id="seg-dsk"></div>
+            <span class="h">disk free</span>
+          </div>
+          <ul class="specs">
+            <li><b>%CORES%</b></li>
+            <li><b>%RAM%</b></li>
+            <li><b>%DISK%</b> volume</li>
+            <li><b>%RUNTIME%</b></li>
+            <li><b>%ARCH%</b></li>
+            <li>up <b id="uptime">–</b></li>
+          </ul>
+          <div class="cta">
+            <a class="btn" href="https://app.nibrun.com/deploy"
+              >Deploy on nibrun</a
+            ><span
+              >one binary, one <code>nib run</code>, a machine like this
+              one</span
+            >
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <div class="hrow">
+          <h2>Vitals.</h2>
+          <span class="when" id="stats-when"></span>
+        </div>
+        <p class="sub">
+          Read from <code>/proc</code> every 10 seconds, kept for an hour.
+          <b>Gaps are naps.</b>
+        </p>
+        <div class="traces">
+          <div class="trace">
+            <div class="lab">
+              <span>cpu <b id="cpu-rd">–</b></span
+              ><span>1 core · load <b id="load1">–</b></span>
+            </div>
+            <svg
+              id="c-cpu"
+              role="img"
+              aria-label="cpu, last hour"
+              viewBox="0 0 600 84"
+              preserveAspectRatio="none"
+            ></svg>
+          </div>
+          <div class="trace">
+            <div class="lab">
+              <span>network <b id="net-rd">–</b></span
+              ><span>total <b id="xfer">–</b></span>
+            </div>
+            <svg
+              id="c-net"
+              role="img"
+              aria-label="network, last hour"
+              viewBox="0 0 600 84"
+              preserveAspectRatio="none"
+            ></svg>
+            <div class="legend">
+              <span><i style="background:var(--blue)"></i>down</span
+              ><span><i style="background:var(--green-hi)"></i>up</span>
+            </div>
+          </div>
+        </div>
+        <div class="readout">
+          <div>
+            <small>memory</small><b id="mem">–</b>
+            <span class="m" id="mem-sub">–</span>
+          </div>
+          <div>
+            <small>disk</small><b id="disk">–</b>
+            <span class="m" id="disk-sub">–</span>
+          </div>
+          <div>
+            <small>load</small><b id="load">–</b>
+            <span class="m" id="procs">–</span>
+          </div>
+          <div>
+            <small>this process</small><b id="rss">–</b>
+            <span class="m" id="rss-sub">–</span>
+          </div>
+          <div>
+            <small>answers / in</small><b id="rt">–</b>
+            <span class="m" id="rt-sub">–</span>
+          </div>
+          <div>
+            <small>vm up</small><b id="vm-up">–</b>
+            <span class="m" id="boots">–</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="hrow">
+          <h2>Achievements.</h2>
+          <span class="when" id="ach-when"></span>
+        </div>
+        <p class="sub">
+          Unlocked by whoever shows up. Nothing here is faked; every one is
+          computed from the counters on the disk.
+        </p>
+        <div class="ach" id="ach"></div>
+      </section>
+
+      <section>
+        <h2>It naps when you leave.</h2>
+        <p class="sub">
+          nibrun pauses the microVM after five quiet minutes and resumes it —
+          memory, timers and all — on the next request. Reachable 24/7, running
+          only while watched.
+        </p>
+        <div class="two">
+          <div>
+            <div class="big">
+              <span id="avail">–</span>%<small
+                >awake since <span id="avail-since">–</span></small
+              >
+            </div>
+            <div class="px" id="b-avail"></div>
+            <div class="axis">
+              <span id="ax-avail-0"></span><span>today, utc</span>
+            </div>
+            <div class="naplog">
+              <div id="sleepy" class="face"></div>
+              <span class="zz">z z z</span><span id="naps">–</span>
+            </div>
+          </div>
+          <div>
+            <ul class="strike">
+              <li class="lab">What keeps it awake</li>
+              <li>A cron job</li>
+              <li>A health checker</li>
+              <li>A load balancer</li>
+              <li>An ops team</li>
+              <li class="yes">You, reading this page</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="hrow">
+          <h2>Visitors.</h2>
+          <span class="when" id="hits-when"></span>
+        </div>
+        <p class="sub">
+          Counted server-side as the page is served. No cookies, no trackers.
+          Every view is <b>xp</b>.
+        </p>
+        <div class="vis">
+          <div class="online">
+            <div class="big" id="v-now">–</div>
+            <div class="note" style="margin-top:6px">
+              online now · peak <b id="v-peak">–</b>
+            </div>
+          </div>
+          <dl class="kv">
+            <dt>views</dt>
+            <dd><b id="v-total">–</b> all time</dd>
+            <dt>today</dt>
+            <dd><b id="v-today">–</b> views · <b id="v-uniq">–</b> people</dd>
+            <dt>boops</dt>
+            <dd><b id="v-boops">–</b></dd>
+            <dt>live</dt>
+            <dd>distinct in 3 min, memory only</dd>
+          </dl>
+          <div>
+            <div class="note" style="margin:0 0 10px">from, today</div>
+            <div class="flags" id="geo"><span>–</span></div>
+          </div>
+        </div>
+        <div class="bars" id="b-views"></div>
+        <div class="axis" style="max-width:none">
+          <span id="ax-views-0"></span><span>today</span>
+        </div>
+        <p class="note">
+          a visitor is a salted hash of address + browser that expires with the
+          utc day · countries come from the edge's <b>cf-ipcountry</b> header
+          and are only kept as a total per day
+        </p>
+      </section>
+
+      <section>
+        <h2>The machine.</h2>
+        <p class="sub">
+          What <code>nib apps status</code> would tell you, from the inside.
+        </p>
+        <div class="term" id="term">
+          $ <span class="p">nib apps status --app %HOST_SLUG%</span>
+          <b>%HOST_SLUG%</b>
+          running
+          <span class="c">On request, stopped after 5m of quiet</span>
+
+          <span id="term-rows">–</span>
+        </div>
+        <div class="deploy">
+          <p>
+            <b>Yours would look the same.</b>
+            Drop a binary on nibrun and it gets a microVM, a disk and an HTTPS
+            URL. Three apps are free.
+          </p>
+          <a class="btn" href="https://app.nibrun.com/deploy"
+            >Deploy on nibrun</a
+          >
+        </div>
+      </section>
+
+      <footer>
+        <span
+          >bun on <a href="https://nibrun.com">nibrun</a> · face by
+          <a href="https://bbot.bwnd.app">bbot</a>
+          · reads /proc · keeps sqlite · serves itself</span
+        >
+        <span
+          ><a href="/api/stats">/api/stats</a>
+          · <a href="/api/hits">/api/hits</a></span
+        >
+      </footer>
+    </div>
+
+    <script type="module" src="./page.ts"></script>
+  </body>
+</html>

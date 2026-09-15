@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "deploy-to-nibrun": {
+      "source": "ilbertt/nibrun",
+      "sourceType": "github",
+      "skillPath": "skills/deploy-to-nibrun/SKILL.md",
+      "computedHash": "2ceeacd7dca550379fc869695af0dbd100f23e3ed6d36ad8ad529c51391b6e0c"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "nibrun-vitals",
+  "type": "module",
+  "private": true,
+  "imports": {
+    "#*": "./src/server/*"
+  },
+  "scripts": {
+    "dev": "bun run scripts/dev.ts",
+    "build": "bun run scripts/build.ts",
+    "build:local": "BUILD_TARGET=host bun run build",
+    "release:prepare": "bun run scripts/prepare-release.ts",
+    "check:types": "bun run --bun tsc -b",
+    "check:codestyle": "bun run --bun biome check",
+    "check:all": "bun run --parallel check:types check:codestyle",
+    "fix:codestyle": "bun run --bun biome check --write"
+  },
+  "dependencies": {
+    "@bwnd/bbot": "^0.5.0",
+    "@fontsource-variable/space-grotesk": "^5.2.10",
+    "@fontsource/space-mono": "^5.2.10"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.11",
+    "@types/bun": "1.4.2",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "bun": "1.4.2",
+    "node": "please use bun"
+  },
+  "packageManager": "bun@1.4.2"
+}
