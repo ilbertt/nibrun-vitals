@@ -12,4 +12,5 @@ the wire between them.
 
 To release, run the **release** workflow from the Actions tab: it builds, tags the commit with the
 date (`v2026.9.15-1`, a second cut that day is `-2`) and attaches `vitals-linux-x64` to a GitHub
-Release. The badge in the README deploys the newest one.
+Release. [nibrun.com/deploy/nibrun-vitals](https://nibrun.com/deploy/nibrun-vitals) — the badge in the
+README and the buttons in the app — deploys the newest one.
