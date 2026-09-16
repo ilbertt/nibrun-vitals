@@ -36,9 +36,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # bun
 *.bun-build
 
-# Where the app saves data
-**/data/*
-!**/data/.gitkeep
+# Where the app saves data (it creates the folder itself)
+data
 
 
 # the built page, embedded into the binary
