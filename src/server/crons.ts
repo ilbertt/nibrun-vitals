@@ -4,6 +4,9 @@ import { performWiggle, startWiggles, wiggles } from '#wiggles.ts';
 const TITLE = 'mandatory-wiggle';
 const SCHEDULE = '*/15 * * * *';
 const TITLE_ARG = '--cron-title=';
+// Bun folds direct process.env.NODE_ENV reads while bundling. Keep this selection at runtime
+// so a binary built in development can still register nibrun's OS-backed scheduler.
+const runtimeEnv = process.env;
 
 function runWiggle() {
   console.log(`${TITLE} started`);
@@ -32,7 +35,7 @@ export function runCronJob(): boolean {
 }
 
 export async function registerCrons({ entrypoint }: { entrypoint: string }): Promise<void> {
-  if ((process.env.NODE_ENV ?? 'production') === 'production') {
+  if ((runtimeEnv.NODE_ENV ?? 'production') === 'production') {
     await Bun.cron(entrypoint, SCHEDULE, TITLE);
   } else {
     Bun.cron(SCHEDULE, () => {

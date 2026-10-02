@@ -134,3 +134,33 @@ test('unknown cron titles fail before starting HTTP or recording a boot', async 
   expect(wiggles().count).toBe(0);
   expect(boots().count).toBe(0);
 });
+
+test('a bundled development build selects the OS scheduler from the production runtime', async () => {
+  const built = await Bun.build({
+    entrypoints: ['src/server/crons.ts'],
+    target: 'bun',
+    format: 'esm',
+    minify: { whitespace: true, syntax: true },
+    define: { 'process.env.NODE_ENV': JSON.stringify('development') },
+  });
+  expect(built.success).toBe(true);
+  const source = await built.outputs[0]!.text();
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
+  const code = `
+    Bun.cron = (...args) => {
+      if (args.length !== 3) throw Error('In-process scheduler selected in production');
+      console.log('OS scheduler selected');
+      return Promise.resolve();
+    };
+    const { registerCrons } = await import(${JSON.stringify(moduleUrl)});
+    await registerCrons({ entrypoint: 'vitals' });
+  `;
+  const proc = Bun.spawn([process.execPath, '--eval', code], {
+    env: { ...process.env, NIBRUN_DATA_DIR: dataDir, NODE_ENV: 'production' },
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const error = await new Response(proc.stderr).text();
+  expect(await proc.exited, error).toBe(0);
+  expect(await new Response(proc.stdout).text()).toContain('OS scheduler selected');
+});
