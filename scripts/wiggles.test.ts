@@ -38,7 +38,7 @@ afterAll(() => {
 });
 
 test('starts at the next UTC quarter hour and preserves the original clock on redeploy', () => {
-  expect(performWiggle({ now: at('12:14:59') })).toBe(false);
+  expect(performWiggle({ now: at('12:14:54') })).toBe(false);
   const original = wiggles({ now: at('12:07:00') });
   expect(original.started).toBe(at('12:07:00') / MS_PER_S);
   expect(original.first_due).toBe(at('12:15:00') / MS_PER_S);
@@ -61,6 +61,16 @@ test('counts real runs once per slot and reads receipts without writing a wiggle
   expect(result.last).toBe(at('12:30:01') / MS_PER_S);
   expect(result.next).toBe(at('12:45:00') / MS_PER_S);
   expect(wiggles({ now: at('12:31:00') })).toEqual(result);
+});
+
+test('credits a host cron dispatch when the guest clock is slightly behind the boundary', () => {
+  expect(performWiggle({ now: at('12:14:59.990') })).toBe(true);
+  expect(performWiggle({ now: at('12:15:00.030') })).toBe(false);
+  const result = wiggles({ now: at('12:16:00') });
+  expect(result.count).toBe(1);
+  expect(result.missed).toBe(0);
+  expect(result.recent[0]?.slot).toBe(at('12:15:00') / MS_PER_S);
+  expect(result.recent[0]?.status).toBe('done');
 });
 
 test('gives a due job 60 seconds of grace and never backfills skipped quarters', () => {

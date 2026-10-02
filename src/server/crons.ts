@@ -9,8 +9,9 @@ const TITLE_ARG = '--cron-title=';
 const runtimeEnv = process.env;
 
 function runWiggle() {
-  console.log(`${TITLE} started`);
-  const added = performWiggle();
+  const now = Date.now();
+  console.log(`${TITLE} started at ${new Date(now).toISOString()}`);
+  const added = performWiggle({ now });
   console.log(
     `${TITLE} completed: ${added ? 'wiggle recorded' : 'no new slot'} · ${wiggles().count} total`,
   );

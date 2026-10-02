@@ -4,6 +4,9 @@ import type { WigglesPayload } from '#types.ts';
 const MS_PER_S = 1000;
 export const WIGGLE_INTERVAL_S = 900;
 const GRACE_S = 60;
+// The host dispatches cron against its clock; a guest clock just behind it must still
+// recognize the intended quarter hour rather than reject it as the previous slot.
+const EARLY_GRACE_S = 5;
 const RECENT_SLOTS = 16;
 
 db.exec(`
@@ -38,7 +41,7 @@ export function startWiggles({ now = Date.now() }: { now?: number } = {}) {
 export function performWiggle({ now = Date.now() }: { now?: number } = {}): boolean {
   const clock = qClock.get();
   const performed = Math.floor(now / MS_PER_S);
-  const slot = Math.floor(performed / WIGGLE_INTERVAL_S) * WIGGLE_INTERVAL_S;
+  const slot = Math.floor((performed + EARLY_GRACE_S) / WIGGLE_INTERVAL_S) * WIGGLE_INTERVAL_S;
   if (!clock || slot < clock.first_due || performed - slot >= GRACE_S) {
     return false;
   }

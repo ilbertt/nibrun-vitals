@@ -13,6 +13,8 @@ the count, when the schedule started, the last and next dance breaks, and recent
 Duplicate invocations do not double-count; missed slots turn red after a 60-second grace period
 and are never filled by a late or later run. The schedule and receipts survive redeploys. Keep the page
 closed to observe scheduled wakeups, since its live refreshes keep the app awake.
+Dispatches up to five seconds before a boundary count toward that quarter, allowing for a small
+difference between the host and guest clocks.
 
 Face by [bbot](https://bbot.bwnd.app). Public domain, see [LICENSE](./LICENSE). To hack on it,
 see [CONTRIBUTING](./.github/CONTRIBUTING.md).
