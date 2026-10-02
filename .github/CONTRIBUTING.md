@@ -10,6 +10,11 @@ bun run build        # dist/vitals for linux x64; `bun run build:local` for this
 `src/server` is the binary, `src/page` the page it embeds, `src/server/types.ts` what goes over
 the wire between them.
 
+`src/server/crons.ts` registers the 15-minute wiggle job. Production (the default) uses the
+OS-backed `Bun.cron` overload; `dev` explicitly sets `NODE_ENV=development` and uses the in-process
+scheduler. Cron commands dispatch before HTTP and boot accounting, write their receipt, close
+SQLite, and exit. `NIBRUN_DATA_DIR` selects the persistent data directory, defaulting to `./data`.
+
 To release, run the **release** workflow from the Actions tab: it builds, tags the commit with the
 date (`v2026.9.15-1`, a second cut that day is `-2`) and attaches `vitals-linux-x64` to a GitHub
 Release. [nibrun.com/deploy/nibrun-vitals](https://nibrun.com/deploy/nibrun-vitals) — the badge in the

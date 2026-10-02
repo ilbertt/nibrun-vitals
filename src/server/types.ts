@@ -102,6 +102,7 @@ export type HitsPayload = {
   window_s: number;
   countries: { cc: string; views: number }[];
   boops: number;
+  wiggles: WigglesPayload;
   level: { lvl: number; xp: number; floor: number; next: number };
   achievements: Achievement[];
   today: DaySummary;
@@ -111,3 +112,17 @@ export type HitsPayload = {
 };
 
 export type BoopPayload = { boops: number };
+
+export type WigglesPayload = {
+  ts: number;
+  started: number;
+  first_due: number;
+  interval_s: number;
+  grace_s: number;
+  count: number;
+  expected: number;
+  missed: number;
+  last: number | null;
+  next: number;
+  recent: { slot: number; performed: number | null; status: 'done' | 'missed' | 'pending' }[];
+};

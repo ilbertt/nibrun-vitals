@@ -492,6 +492,61 @@ h2 {
   display: none;
 }
 
+/* scheduled dance breaks */
+.wiggle-heading {
+  flex-wrap: wrap;
+}
+.wiggle-room {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+}
+.wiggle-pet {
+  text-align: center;
+}
+.wiggle-pet .face {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+}
+.wiggle-pet p {
+  color: var(--green-hi);
+  font: 12px / 1.6 var(--mono);
+  margin: 12px 0 0;
+}
+.wiggle-details {
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin-top: 20px;
+}
+.wiggle-slots {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 22px;
+  margin-bottom: 0;
+  padding: 0;
+  list-style: none;
+}
+.wiggle-slots li {
+  height: 24px;
+  border: 1px dashed var(--green-dim);
+  border-radius: 3px;
+  background: var(--panel);
+}
+.wiggle-slots li.done {
+  border: 1px solid var(--green-hi);
+  background: var(--green);
+  box-shadow: 0 0 5px var(--green-glow);
+}
+.wiggle-slots li.missed {
+  border: 1px solid var(--red);
+  background: var(--red);
+}
+.wiggle-axis {
+  max-width: none;
+}
+
 /* sleep */
 .two {
   display: grid;
@@ -748,6 +803,7 @@ footer {
   }
   .traces,
   .two,
+  .wiggle-room,
   .vis {
     grid-template-columns: 1fr;
     gap: 28px;

@@ -1,9 +1,17 @@
 import { statSync } from 'node:fs';
 import { getPublicAssets } from '#assets.ts';
 import * as collector from '#collector.ts';
+import { registerCrons, runCronJob } from '#crons.ts';
 import { achievements, level } from '#game.ts';
 import * as store from '#store.ts';
 import type { BoopPayload, HitsPayload, Sample, StatsPayload } from '#types.ts';
+import { wiggles } from '#wiggles.ts';
+
+if (runCronJob()) {
+  process.exit(0);
+}
+await registerCrons({ entrypoint: import.meta.path });
+store.recordBoot();
 
 const DEFAULT_PORT = 3000;
 const PORT = Number(process.env.PORT ?? process.env.NIBRUN_HTTP_PORT ?? DEFAULT_PORT);
@@ -168,7 +176,7 @@ function tick() {
     interval_s: collector.INTERVAL_S,
     uptime_s: collector.uptimeS(),
     process_uptime_s: Math.round((now - bootedAt) / MS_PER_S),
-    boots: { count: boots.count, last: boots.last, first: store.firstBoot },
+    boots: { count: boots.count, last: boots.last, first: store.firstBoot() },
     naps: store.naps(dayStartS),
     cpu: { pct: s.cpu, cores: machine.cores, load },
     mem,
@@ -202,6 +210,7 @@ function hits() {
     window_s: LIVE_WINDOW_S,
     countries: store.countries(store.dayKey(now)),
     boops: store.boops,
+    wiggles: wiggles({ now }),
     level: level(summary.total_views),
     achievements: achievements({
       nowS,

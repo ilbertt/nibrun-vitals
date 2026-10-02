@@ -17,7 +17,7 @@ const COUNTRIES_LIMIT = 8;
 
 mkdirSync(DATA_DIR, { recursive: true });
 export const db = new Database(`${DATA_DIR}/vitals.db`, { create: true });
-db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
+db.exec('PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;');
 db.exec(`
   CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS daily (
@@ -110,11 +110,13 @@ export function addSample(s: Sample) {
 export const loadSamples = (sinceS: number) => qSamples.all(sinceS);
 
 // ---- boots ----
-db.query('INSERT OR IGNORE INTO boots (t) VALUES (?)').run(nowS());
-if (!getMeta('first_boot')) {
-  setMeta({ key: 'first_boot', value: nowS() });
+export function recordBoot() {
+  db.query('INSERT OR IGNORE INTO boots (t) VALUES (?)').run(nowS());
+  if (!getMeta('first_boot')) {
+    setMeta({ key: 'first_boot', value: nowS() });
+  }
 }
-export const firstBoot = Number(getMeta('first_boot'));
+export const firstBoot = () => Number(getMeta('first_boot'));
 const qBoots = db.query<{ n: number; last: number }, []>(
   'SELECT COUNT(*) n, MAX(t) last FROM boots',
 );
@@ -201,8 +203,9 @@ export type DaySummary = { day: string; views: number; visitors: number; up_pct:
 
 /** A day is measured from its start, or from the first boot on the day the app first came up. */
 function daySummary({ day, now, row }: { day: string; now: number; row?: DailyRow }): DaySummary {
-  const firstDay = dayKey(firstBoot * MS_PER_S);
-  const start = Math.max(dayStartS(day), day === firstDay ? firstBoot : 0);
+  const first = firstBoot();
+  const firstDay = dayKey(first * MS_PER_S);
+  const start = Math.max(dayStartS(day), day === firstDay ? first : 0);
   const end = day === dayKey(now) ? Math.floor(now / MS_PER_S) : dayStartS(day) + S_PER_DAY;
   const denominator = Math.max(1, end - start);
   return {
@@ -225,7 +228,7 @@ export function summary(now: number) {
     series.push(daySummary({ day, now, row: byDay.get(day) }));
   }
   const totals = qTotals.get()!;
-  const sinceS = Math.max(1, Math.floor(now / MS_PER_S) - firstBoot);
+  const sinceS = Math.max(1, Math.floor(now / MS_PER_S) - firstBoot());
   return {
     today: series[series.length - 1]!,
     days: series,

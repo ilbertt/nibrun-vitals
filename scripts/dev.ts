@@ -15,7 +15,7 @@ const proc = Bun.spawn(
     ENTRYPOINT,
   ],
   // stdio is inherited so the child keeps the terminal (TTY) and its output stays colored
-  { stdio: ['inherit', 'inherit', 'inherit'] },
+  { stdio: ['inherit', 'inherit', 'inherit'], env: { ...process.env, NODE_ENV: 'development' } },
 );
 
 process.exit(await proc.exited);

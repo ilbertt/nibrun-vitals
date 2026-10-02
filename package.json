@@ -12,7 +12,8 @@
     "release:prepare": "bun run scripts/prepare-release.ts",
     "check:types": "bun run --bun tsc -b",
     "check:codestyle": "bun run --bun biome check",
-    "check:all": "bun run --parallel check:types check:codestyle",
+    "check:wiggles": "bun test scripts/wiggles.test.ts",
+    "check:all": "bun run --parallel check:types check:codestyle check:wiggles",
     "fix:codestyle": "bun run --bun biome check --write"
   },
   "dependencies": {

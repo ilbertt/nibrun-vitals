@@ -8,7 +8,13 @@ import monoBold from '@fontsource/space-mono/files/space-mono-latin-700-normal.w
 import grotesk from '@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2' with {
   type: 'file',
 };
-import type { Achievement, BoopPayload, HitsPayload, StatsPayload } from '../server/types.ts';
+import type {
+  Achievement,
+  BoopPayload,
+  HitsPayload,
+  StatsPayload,
+  WigglesPayload,
+} from '../server/types.ts';
 
 const MS_PER_S = 1000;
 const S_PER_MIN = 60;
@@ -41,6 +47,13 @@ const TRACE_H = 84;
 const TRACE_PAD = 4;
 const TRACE_GAP_TICKS = 2.5;
 const CPU_TRACE_FLOOR = 5;
+const WIGGLE_LINES = [
+  'No knees. No problem.',
+  'One small wiggle for a VM.',
+  'My disk has excellent rhythm.',
+  'Professionally unserious, every 15 minutes.',
+  'Back to my regularly scheduled nap.',
+];
 
 const GREEN = 'oklch(0.78 0.19 149)';
 const BLUE = 'oklch(0.75 0.13 230)';
@@ -155,6 +168,7 @@ const ICONS: Record<string, string[]> = {
 // ---- the creature: bbot, moods driven by cpu ----
 const face = createFace($('face'), { expression: 'content' });
 createFace($('sleepy'), { expression: 'sleep', track: false, blink: false, idle: false });
+const wiggler = createFace($('wiggler'), { expression: 'content', track: false });
 let mood = 'content';
 let boopTimer = 0;
 function setMood(next: string) {
@@ -509,6 +523,96 @@ function renderAwake(h: HitsPayload) {
   set({ id: 'ax-avail-0', text: dayLabel(h.days[0]?.day ?? h.today.day) });
 }
 
+// ---- scheduled wiggles: the receipts come from a separate cron process ----
+let wiggleState: WigglesPayload | null = null;
+let wigglesAt = 0;
+const utcStamp = (ts: number) =>
+  new Date(ts * MS_PER_S).toLocaleString('en-GB', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'UTC',
+  });
+const utcTime = (ts: number) => new Date(ts * MS_PER_S).toISOString().slice(DAY_KEY_LENGTH + 1, -1);
+
+function renderWiggles(w: WigglesPayload) {
+  if (wiggleState && w.count > wiggleState.count) {
+    wiggler.react('bounce');
+  }
+  wiggleState = w;
+  wigglesAt = Date.now();
+  wiggler.setExpression(w.missed ? 'worried' : w.count ? 'joy' : 'content');
+  set({ id: 'wiggle-count', text: n0(w.count) });
+  set({ id: 'wiggle-started', text: `${utcStamp(w.started)} UTC` });
+  set({
+    id: 'wiggle-last',
+    text: w.last == null ? 'warming up for the first one' : `${utcStamp(w.last)} UTC`,
+  });
+  set({
+    id: 'wiggle-line',
+    text: w.count
+      ? WIGGLE_LINES[(w.count - 1) % WIGGLE_LINES.length]!
+      : 'Warming up my imaginary legs.',
+  });
+  set({
+    id: 'wiggle-attendance',
+    text: `${n0(w.count)} / ${n0(w.expected)} due · ${n0(w.missed)} missed`,
+  });
+  $('wiggle-status').className = `chip${w.missed ? ' bad' : ''}`;
+  const pending = w.recent.some((slot) => slot.status === 'pending' && slot.slot <= w.ts);
+  set({
+    id: 'wiggle-status',
+    text: w.missed
+      ? `${n0(w.missed)} missed`
+      : pending
+        ? 'wiggle due'
+        : w.count
+          ? 'perfect attendance'
+          : 'awaiting first wiggle',
+  });
+  setHtml({
+    id: 'wiggle-slots',
+    html: w.recent
+      .map((slot) => {
+        const receipt =
+          slot.performed == null ? slot.status : `danced at ${utcTime(slot.performed)} UTC`;
+        const label = `${utcStamp(slot.slot)} UTC: ${receipt}`;
+        return `<li class="${slot.status}" aria-label="${label}" title="${label}" tabindex="0"></li>`;
+      })
+      .join(''),
+  });
+  set({
+    id: 'wiggle-window',
+    text: `${w.recent.length} recent slot${w.recent.length === 1 ? '' : 's'}`,
+  });
+  tickWiggles();
+}
+
+function tickWiggles() {
+  if (!wiggleState) {
+    return;
+  }
+  const elapsed = Math.floor((Date.now() - wigglesAt) / MS_PER_S);
+  const serverNow = wiggleState.ts + elapsed;
+  const fresh = elapsed <= STALE_AFTER_S;
+  const remaining = wiggleState.next - serverNow;
+  set({
+    id: 'wiggle-next',
+    text: fresh
+      ? remaining > 0
+        ? dur(remaining)
+        : 'checking the dance floor…'
+      : 'waiting for fresh attendance…',
+  });
+  if (!fresh) {
+    $('wiggle-status').className = 'chip bad';
+    set({ id: 'wiggle-status', text: 'attendance stale' });
+  }
+}
+
 async function loadHits() {
   try {
     const h = (await fetch('/api/hits', { cache: 'no-store' }).then((r) =>
@@ -518,12 +622,14 @@ async function loadHits() {
     renderVisitors(h);
     renderGame(h);
     renderAwake(h);
+    renderWiggles(h.wiggles);
   } catch (e) {
     console.warn('hits', e);
   }
 }
 
 function ticker() {
+  tickWiggles();
   if (statsAt) {
     const since = nowS() - sampleTs;
     const stale = since > STALE_AFTER_S;

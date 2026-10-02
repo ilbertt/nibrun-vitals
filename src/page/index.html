@@ -188,11 +188,58 @@
       </section>
 
       <section>
+        <div class="hrow wiggle-heading">
+          <h2>Mandatory wiggles.</h2>
+          <span class="chip" id="wiggle-status">loading attendance</span>
+        </div>
+        <p class="sub">
+          Every 15 minutes, this microVM wakes up, does one completely
+          unnecessary wiggle, and saves the receipt. Even tiny computers deserve
+          a dance break.
+        </p>
+        <div class="wiggle-room">
+          <div class="wiggle-pet">
+            <div id="wiggler" class="face" aria-hidden="true"></div>
+            <p id="wiggle-line">Warming up my imaginary legs.</p>
+          </div>
+          <div>
+            <div class="big">
+              <span id="wiggle-count">–</span><small>wiggles performed</small>
+            </div>
+            <dl class="kv wiggle-details">
+              <dt>on the job since</dt>
+              <dd id="wiggle-started">–</dd>
+              <dt>last dance break</dt>
+              <dd id="wiggle-last">–</dd>
+              <dt>next wiggle in</dt>
+              <dd id="wiggle-next">–</dd>
+              <dt>attendance</dt>
+              <dd id="wiggle-attendance">–</dd>
+            </dl>
+            <ol
+              class="wiggle-slots"
+              id="wiggle-slots"
+              aria-label="Recent dance break attendance"
+            ></ol>
+            <div class="axis wiggle-axis">
+              <span id="wiggle-window">–</span><span>quarter hours, utc</span>
+            </div>
+          </div>
+        </div>
+        <p class="note">
+          green = danced · red = missed · outlined = waiting. Each square is one
+          scheduled break, with a 60-second grace period. Receipts survive
+          redeploys; missed breaks stay missed. Keeping this page open keeps the
+          VM awake; close it to let the scheduler wake it for a wiggle.
+        </p>
+      </section>
+
+      <section>
         <h2>It naps when you leave.</h2>
         <p class="sub">
           nibrun pauses the microVM after five quiet minutes and resumes it —
           memory, timers and all — on the next request. Reachable 24/7, running
-          only while watched.
+          while watched, plus a brief dance break every quarter hour.
         </p>
         <div class="two">
           <div>
@@ -213,7 +260,7 @@
           <div>
             <ul class="strike">
               <li class="lab">What keeps it awake</li>
-              <li>A cron job</li>
+              <li class="yes">A very brief wiggle, every 15 minutes</li>
               <li>A health checker</li>
               <li>A load balancer</li>
               <li>An ops team</li>
