@@ -11,7 +11,9 @@ an HTTPS URL. No Dockerfile, no YAML, no cluster.
 Sign in, build for Linux x86_64, `nib run`, then ask the URL for something. What that path does not
 need is below it: [copying an app](#copying-an-app), [the guest contract](#the-guest-contract),
 [naming a runtime value](#naming-a-runtime-value), [a second public port](#a-second-public-port),
-and [what nibrun does not do](#tradeoffs).
+[cron jobs](#cron-jobs), and [what nibrun does not do](#tradeoffs).
+
+For CI deployments, start at [GitHub Actions](#github-actions).
 
 ## 1. Sign in
 
@@ -94,20 +96,60 @@ fixtures a first run would otherwise have to write:
 nib run ./my-server --name my-app --data-folder ./seed
 ```
 
-It takes a folder, or a `.tar.gz` or `.zip` that already holds one — the zip Finder or Explorer
-made goes as it stands. Either way **the root of the archive becomes the root of `data/`**: a
-folder is packed from the inside, so `./seed/app.db` arrives as `/app/data/app.db`, and bundling
-the folder rather than its contents puts every file one directory deeper than the app looks. Up to
-1 GiB sent and 2 GiB unpacked, and only as the app is created: this and the app writing its own
-files are the whole of how anything gets onto the volume. A zip made anywhere but unix carries no
+`--data-folder` accepts a local folder, a `.tar.gz` or `.zip` file, or an HTTPS URL to either
+archive format. nibrun fetches remote archives directly, so there is no need to download them
+locally first. The URL must name the archive in its path and be reachable from nibrun; signed
+query strings work, so quote URLs that contain them:
+
+```sh
+nib run ./my-server --name my-app --data-folder 'https://example.com/seed.tar.gz'
+```
+
+For every source, **the root of the archive becomes the root of `data/`**: a folder is packed from
+the inside, so `./seed/app.db` arrives as `/app/data/app.db`, and bundling the folder rather than
+its contents puts every file one directory deeper than the app looks. Up to 1 GiB uploaded or
+fetched and 2 GiB unpacked, and only as the app is created: this and the app writing its own files
+are the whole of how anything gets onto the volume. A zip made anywhere but unix carries no
 permissions, so an executable bit does not survive one.
 
+### Try seeding first-run setup before going public
+
+Some apps let the first visitor claim the admin account. Their public URL is reachable as soon
+as they boot, so check whether that setup can be seeded before deploying. This depends on what
+the app supports and what can run on the local machine:
+
+1. Look for a build for the local OS and architecture, or a supported way to run the app from
+   source. **The Linux binary uploaded to nibrun cannot run directly on macOS.** Use the same app
+   version and check that its data can move between the local and Linux builds.
+2. If supported, seed a dedicated data folder using the app's documented initialization command,
+   or run the local build bound to `127.0.0.1`, complete admin setup, and stop it cleanly.
+3. Deploy the seeded folder with `--data-folder`, using the Linux x86_64 binary. Supply any
+   encryption keys or other environment values the saved data needs on this first deploy.
+4. Check the public app requires the configured login and no longer offers an initial admin claim.
+
+```sh
+nib run ./my-server-linux-x64 --name my-app --data-folder ./configured-data
+```
+
+If seeding succeeds, the app starts with its admin account already claimed. Keep the configured
+data folder private: it contains the app's account state.
+
+If a compatible local build or initialization method is unavailable, check whether the app can
+set initial admin credentials through configuration on its first boot. If neither approach is
+supported, explain that seeding could not be done and that first-visitor setup will be reachable
+when the public URL goes live.
+
+### Redeploying
+
 **Every deploy after that must name the app**, or a non-interactive shell creates a second one.
-`nib apps list` finds the slug again when a later session has to redeploy:
+`nib apps list` finds the name again when a later session has to redeploy:
 
 ```sh
 nib run ./my-server --app my-app
 ```
+
+For a local binary, the CLI skips uploading when that app already has an artifact with the same
+bytes and filename. It still creates a new deployment with the configuration you supplied.
 
 Environment variables are an **edit**, not a replacement — anything a deploy does not name is left
 alone, so secrets are set once:
@@ -144,6 +186,42 @@ Every option a deploy takes is listed by `nib run anything --help` — any word 
 the binary, because the help does not read it, and `nib run --help` on its own answers with the
 subcommand rather than the options. What is below is what `--help` does not say.
 
+### GitHub Actions
+
+Deploy an existing app without an API key or `nib login` in CI. Use a CLI release with GitHub
+OIDC support. After signing in locally, configure which workflow may deploy:
+
+```sh
+nib apps github-workflows set --app my-app --repository OWNER/REPO --workflow deploy.yml
+```
+
+Save this as `.github/workflows/deploy.yml`. Replace `./build.sh` with the repository’s build
+command, `./my-server` with its Linux x86_64 output, and `APP_ID` with the app ID from
+the setup command above:
+
+```yaml
+name: Deploy to nibrun
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: nibrunhq/setup-cli@v1
+      - run: ./build.sh
+      - run: nib run ./my-server --github-trusted-oidc --app-id APP_ID
+```
+
+Branch and tag runs of this workflow can deploy. The CLI exchanges GitHub identity for a
+temporary token scoped to this app. Deployments reuse its saved startup arguments and configuration. The command returns once the deployment is
+created, without waiting for it to serve. If the trust rule requires a GitHub environment,
+set `jobs.deploy.environment` to match.
+
 ## 4. Verify
 
 Serving is only a TCP connect, and a broken process can hold the port while answering nothing. So
@@ -153,8 +231,31 @@ ask the URL for something:
 curl -fsS https://my-app.nibrun.app/
 ```
 
-`nib apps logs --app my-app` says why one that was created never came up, and what one that did is
+`nib apps logs --app my-app` prints recent output and exits. Add `--follow` for live output, or
+`--timerange 2h` to read further back. It says why an app never came up, and what one that did is
 complaining about. `nib --help` lists the rest — status, domains, filesystem, export, delete.
+
+## Inspecting SQLite databases
+
+Read SQLite databases in an app's `data/` through the CLI or dashboard without downloading them.
+When a task calls for inspecting an app's database, use `nib apps sqlite` to discover its
+subcommands:
+
+```sh
+nib apps sqlite --help
+```
+
+Explore the subcommands and their `--help` to list saved connections, create a connection to
+the database file, and query it. Paths match `nib apps files ls`: `/app.db` names the guest's
+`/app/data/app.db`. Reuse a saved connection when available, or create one for the file the app
+actually uses. Pass `--app` and the saved `--connection` ID when querying; use `--json` for
+structured results. The app needs a running deployment. Queries read the actual database in
+the guest, including committed changes in its WAL.
+
+In the dashboard's **Files** tab, choose **Mark as SQLite database** from the file menu, then
+click the database file to open the explorer. Both CLI and dashboard connections are read-only:
+SQLite rejects data and schema writes, so an AI agent can explore without modifying the database.
+The app can continue writing to its database.
 
 ## Copying an app
 
@@ -175,17 +276,22 @@ exported `.env` as the record of what the original had.
 
 ## The guest contract
 
+Apps and persistent storage are hosted in Frankfurt, Germany (AWS `eu-central-1`). Uploaded
+binaries, data imports, exports and platform database backups are stored in the same region.
+HTTPS requests pass through Cloudflare's global network.
+
 Everything the binary can count on, and nothing else:
 
 | | |
 | --- | --- |
 | Platform | Linux **x86_64**, glibc (Debian rootfs) |
 | Working directory | `/app` — a tmpfs the app does not own |
-| Persistent volume | `/app/data` — 8 GiB, survives every redeploy. `NIBRUN_DATA_DIR` names it |
+| Persistent volume | `/app/data` — 8 GiB, survives every redeploy. `NIBRUN_DATA_DIR` names it. Not `noexec`: a file unpacked here can be exec'd in place |
 | Port | `NIBRUN_HTTP_PORT`, and `PORT` beside it; the app **must** listen on it, on `0.0.0.0` |
 | Own hostname | `NIBRUN_HOSTNAME` is set by the guest to the app's own `<slug>.nibrun.app` |
 | Second port | Only with `--extra-public-port`: `NIBRUN_EXTRA_PUBLIC_PORT` on `NIBRUN_PUBLIC_IPV4`, TCP and UDP, assigned rather than chosen, and reached at that number and no other |
-| Ephemeral | `TMPDIR=/tmp` is a tmpfs and is lost on restart. So is everything outside `/app/data` |
+| Ephemeral | `TMPDIR=/tmp` is a tmpfs of **64 MiB** — a quarter of the RAM — and is lost on restart. So is everything outside `/app/data` |
+| Programs | `/bin/sh` and `crontab` are available. Ship other tools yourself; there is no `tar` or `unzip` |
 | Resources | 1 vCPU, 256 MiB RAM |
 | `HOME` | `/app`, which the app cannot write: a binary that puts a cache or a config file under `~` dies of `EACCES` before it ever serves. `/app/data` is the only path it can write |
 | URL | `https://<slug>.nibrun.app`, live as soon as it boots |
@@ -196,6 +302,11 @@ and any of them you set yourself is ignored, as is `PORT`, which carries the sam
 than fixed, so one you set yourself is what the binary reads — `HOME=${NIBRUN_DATA_DIR}` is how a
 binary that insists on writing under `~` is given a home it owns.
 
+A launcher that carries a runtime and unpacks it at boot — a `node` and a Next standalone build,
+say — meets all three at once: it unpacks with its own code rather than `tar`, into `/app/data`
+rather than `/tmp` (a `node` alone is larger than `/tmp`), and execs from there. Copying out to
+`/tmp` first is what a `noexec` volume elsewhere would need, and this one is not.
+
 A binary that needs its own absolute URL — an OAuth redirect, a webhook it registers, a link in
 an email — builds it from `NIBRUN_HOSTNAME` rather than being told it, and falls back to whatever
 it uses when it is not on nibrun.
@@ -204,9 +315,10 @@ it uses when it is not on nibrun.
 
 A binary that insists on a variable name of its own reaches the same values through it —
 `APP_BASE_URL=https://${NIBRUN_HOSTNAME}`, `DATABASE_URL=file:${NIBRUN_DATA_DIR}/app.db` — and the
-guest expands it before exec. Only the `NIBRUN_` names above expand, and only those: a secret
-holding a `$` arrives untouched, `${PORT}` is not one of them, and anything else is refused when
-you deploy it.
+guest expands it before exec. Only complete `${NIBRUN_NAME}` references to the names above
+expand. Bare names such as `$NIBRUN_HTTP_PORT`, unmatched braces, and other dollar signs remain
+literal. A complete reference to an unknown `NIBRUN_` name is refused when you deploy it;
+`${PORT}` remains literal.
 
 ## A second public port
 
@@ -222,13 +334,40 @@ Ask for the port in the same change that names it:
 nib apps update --app my-app --extra-public-port --env 'ANNOUNCED_IP=${NIBRUN_PUBLIC_IPV4}'
 ```
 
+## Cron jobs
+
+Register jobs through `crontab` from the binary's normal server startup. nibrun's agent keeps
+the schedule and wakes an idle app to run it; in-process timers only run while the app is awake.
+For Bun apps, see [Bun's cron documentation](https://bun.com/docs/runtime/cron) and use
+crontab-backed scheduling. A task command should do its work and exit without starting the
+server or registering jobs again.
+
+- Maximum **10 jobs per app**, in **UTC**. Use standard five-field crontab syntax or nicknames such as
+  `@daily`; no seconds field or `@reboot`.
+- `/mnt/artifact/server` is the uploaded binary. Commands run through `/bin/sh` as the app user
+  in `/app`, inherit deployment environment, and send stdout/stderr to app logs.
+- Registration replaces the entire table. `crontab -l` reads it; `crontab -r` removes it.
+- Every new deployment clears schedules, including binary upgrades and settings redeploys
+  through `nib apps update`. Register them again at startup. Settings edits that create no
+  deployment preserve schedules.
+- Manual suspension disables execution but keeps schedules visible. Runs may overlap; missed
+  runs are not replayed and failures are not retried.
+
+Inspect with `nib apps crons --app my-app` (add `--json`) or the dashboard's **Crons** tab.
+
 ## Tradeoffs
 
 Worth saying out loud before recommending it:
 
+- **New apps sleep after five minutes without incoming traffic.** The next request wakes them.
+  In-process timers and outbound polling pause while asleep; registered [cron jobs](#cron-jobs)
+  can wake the app and keep it awake until they finish. Owners cannot change activation through
+  the CLI, API or dashboard. For an always-on app, email [hello@nibrun.com](mailto:hello@nibrun.com).
 - **One microVM per app, one size.** No horizontal scaling, no load balancing, no resizing.
 - **A deploy is a replace.** The old VM is stopped before the new one starts, because they share
-  one volume — so there are a few seconds of downtime, and no blue/green or canary.
+  one volume. New HTTP requests wait for up to 60 seconds for the replacement to become healthy;
+  a failed or slower deployment returns an error. In-flight requests and existing WebSockets can
+  still disconnect. No blue/green or canary.
 - **A local disk, not a distributed one.** Ideal for SQLite, uploads, caches. It is not
   replicated, so an export (`nib apps export`) is your backup.
 - **The binary is the unit.** The guest boots yours and nothing else — no sidecar, no cron
