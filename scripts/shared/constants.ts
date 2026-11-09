@@ -25,7 +25,7 @@ export const PAGE_ENTRYPOINT = 'src/page/index.html';
  * AVX2). Use `host` to compile for the current machine — see `build:local`.
  *
  * Cross-compiling downloads a *released* Bun for the target platform, so the
- * version in `.bun-version` has to be one npm actually serves.
+ * Bun version in `package.json` has to be one npm actually serves.
  */
 export const DEFAULT_BUILD_TARGET = 'bun-linux-x64';
 
